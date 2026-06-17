@@ -2,9 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --theme-bg: #f8fafc;
+  --theme-bg-rgb: 248, 250, 252;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+}
+
+html.dark {
+  --theme-bg: #030014;
+  --theme-bg-rgb: 3, 0, 20;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+}
+
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 selection:bg-primary-200;
+    background-color: var(--theme-bg);
+    color: var(--text-primary);
+    @apply selection:bg-primary-200 transition-colors duration-500;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -12,21 +28,35 @@
   }
 }
 
-/* Premium Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* ================================================
+   FUTURISTIC THEME UTILITIES
+   ================================================ */
+
+/* Cyber Background */
+.cyber-bg {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 40%, #e2e8f0 70%, #f8fafc 100%);
+  transition: background 0.5s ease;
 }
 
-::-webkit-scrollbar-track {
-  @apply bg-slate-100;
+html.dark .cyber-bg {
+  background: linear-gradient(135deg, #030014 0%, #0f0c29 40%, #1a0a2e 70%, #030014 100%);
 }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+/* Grid overlay pattern */
+.cyber-grid {
+  background-image: 
+    linear-gradient(rgba(14, 116, 144, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 116, 144, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
-/* Glassmorphism utility */
+html.dark .cyber-grid {
+  background-image: 
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Glassmorphism Cards */
 .glass {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
@@ -34,7 +64,187 @@
 }
 
 .glass-dark {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: background 0.5s ease, border-color 0.5s ease;
+}
+
+html.dark .glass-dark {
+  background: rgba(15, 12, 41, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.dark .glass-card {
+  background: rgba(15, 12, 41, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(14, 116, 144, 0.2);
+  box-shadow: 
+    0 0 30px rgba(14, 116, 144, 0.05),
+    0 20px 60px rgba(0, 0, 0, 0.05);
+  transform: translateY(-4px);
+}
+
+html.dark .glass-card:hover {
+  background: rgba(15, 12, 41, 0.7);
+  border-color: rgba(0, 212, 255, 0.2);
+  box-shadow: 
+    0 0 30px rgba(0, 212, 255, 0.08),
+    0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ================================================
+   10-SCENE CINEMATIC UTILITIES
+   ================================================ */
+
+/* Big Typography — Scene 7 */
+.text-massive {
+  font-size: clamp(4rem, 14vw, 16rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+/* Emergency Red Pulse — Scene 5 */
+.red-pulse {
+  animation: redPulseAnim 2s ease-in-out infinite;
+}
+
+@keyframes redPulseAnim {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.2), 0 0 60px rgba(239, 68, 68, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.4), 0 0 120px rgba(239, 68, 68, 0.2);
+  }
+}
+
+/* Emergency background pulse overlay */
+.red-pulse-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.06) 0%, transparent 70%);
+  animation: redBgPulse 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes redBgPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* Feature Card Float — Scene 8 */
+.card-float {
+  animation: cardFloat 5s ease-in-out infinite;
+}
+
+.card-float-delay-1 { animation-delay: 0.5s; }
+.card-float-delay-2 { animation-delay: 1s; }
+.card-float-delay-3 { animation-delay: 1.5s; }
+.card-float-delay-4 { animation-delay: 2s; }
+.card-float-delay-5 { animation-delay: 2.5s; }
+.card-float-delay-6 { animation-delay: 3s; }
+.card-float-delay-7 { animation-delay: 3.5s; }
+
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+/* Scene section number labels */
+.scene-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  opacity: 0.7;
+}
+
+/* Scan-line animation overlay */
+.scan-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 212, 255, 0.015) 2px,
+    rgba(0, 212, 255, 0.015) 4px
+  );
+  pointer-events: none;
+}
+
+/* Text overlay readability classes */
+.text-readability-overlay {
+  background: linear-gradient(to bottom, rgba(var(--theme-bg-rgb), 0.3) 0%, transparent 50%, rgba(var(--theme-bg-rgb), 0.2) 100%);
+  transition: background 0.5s ease;
+}
+
+.text-bottom-fade {
+  background: linear-gradient(to top, rgba(var(--theme-bg-rgb), 0.6) 0%, transparent 100%);
+  transition: background 0.5s ease;
+}
+
+.landing-bottom-fade {
+  background: linear-gradient(to bottom, transparent, var(--theme-bg));
+  transition: background 0.5s ease;
+}
+
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--theme-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(14, 116, 144, 0.3);
+  border-radius: 999px;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.3);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 116, 144, 0.5);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.5);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(14, 116, 144, 0.2);
+  color: inherit;
+}
+
+html.dark ::selection {
+  background: rgba(0, 212, 255, 0.3);
+  color: #fff;
 }
