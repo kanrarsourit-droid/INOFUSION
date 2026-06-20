@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
 // @route   POST /api/doctors
 // @desc    Create a new doctor profile
 // @access  Private/Admin
-router.post('/', protect, authorize('admin'), async (req, res) => {
+router.post('/', protect, authorize('super_admin', 'hospital_admin'), async (req, res) => {
   try {
     const doctor = await Doctor.create(req.body);
     const populatedDoctor = await Doctor.findById(doctor._id).populate('hospital');
@@ -43,7 +43,7 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
 // @route   PUT /api/doctors/:id
 // @desc    Update doctor details
 // @access  Private/Admin
-router.put('/:id', protect, authorize('admin'), async (req, res) => {
+router.put('/:id', protect, authorize('super_admin', 'hospital_admin', 'doctor'), async (req, res) => {
   try {
     const doctor = await Doctor.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -63,7 +63,7 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
 // @route   DELETE /api/doctors/:id
 // @desc    Delete a doctor
 // @access  Private/Admin
-router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+router.delete('/:id', protect, authorize('super_admin', 'hospital_admin'), async (req, res) => {
   try {
     const doctor = await Doctor.findByIdAndDelete(req.params.id);
 

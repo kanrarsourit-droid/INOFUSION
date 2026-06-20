@@ -1,25 +1,68 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const connectDB = async () => {
-  const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/mediroute');
-  console.log(`🚀 MongoDB Connected: ${conn.connection.host}`);
-};
 const mongoose = require('mongoose');
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const passport = require('passport');
 
 // Load environment variables
 dotenv.config();
 
+// Initialize passport configuration
+const configurePassport = require('./config/passportConfig');
+configurePassport();
+
+const connectDB = async () => {
+  const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/mediroute');
+  console.log(`🚀 MongoDB Connected: ${conn.connection.host}`);
+};
+
 const app = express();
 
-// Body Parser Middleware
+// 1. HTTP Security Headers via Helmet
+app.use(helmet());
+
+// 2. Cookie Parser (for secure refreshToken cookies)
+app.use(cookieParser());
+
+// 3. Body Parser Middleware
 app.use(express.json());
 
-// Enable CORS
+// 4. Secure CORS Settings
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
 app.use(cors({
-  origin: '*', // Allow all origins for standard hackathon flexibility
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS Policy: Request Origin is not authorized.'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// 5. Input Sanitization (NoSQL injection and XSS mitigation)
+const { xssSanitizer, nosqlSanitizer, csrfCheck } = require('./middleware/securityHeaders');
+app.use(nosqlSanitizer);
+app.use(xssSanitizer);
+
+// 6. CSRF Request Protection
+app.use(csrfCheck);
+
+// 7. Rate Limiter Middleware
+const { apiLimiter } = require('./middleware/rateLimiter');
+app.use('/api/', apiLimiter);
+
+// 8. Passport initialization
+app.use(passport.initialize());
 
 // Route files
 const authRoutes = require('./routes/auth');
@@ -39,7 +82,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.get('/', (req, res) => {
   res.json({
     status: 'online',
-    message: 'MediRoute AI Backend API is running successfully.'
+    message: 'MediRoute AI Secured Backend API is running successfully.'
   });
 });
 
@@ -50,17 +93,18 @@ const seedDatabase = async () => {
     const Hospital = require('./models/Hospital');
     const Doctor = require('./models/Doctor');
 
-    // 1. Seed Admin & Patient if empty
+    // Seed default roles if empty
     const userCount = await User.countDocuments();
     if (userCount === 0) {
       console.log('🌱 Database is empty. Seeding default accounts...');
       
-      // Default Admin
+      // Default Super Admin
       await User.create({
-        name: 'MediRoute Admin',
-        email: 'admin@mediroute.com',
-        password: 'admin123', // Will be hashed automatically by userSchema pre-save hook
-        role: 'admin'
+        name: 'MediRoute Super Admin',
+        email: 'superadmin@mediroute.com',
+        password: 'superadmin123',
+        role: 'super_admin',
+        isEmailVerified: true
       });
 
       // Default Patient
@@ -68,13 +112,26 @@ const seedDatabase = async () => {
         name: 'John Doe',
         email: 'patient@mediroute.com',
         password: 'patient123',
-        role: 'patient'
+        role: 'patient',
+        isEmailVerified: true
+      });
+
+      // Seeding a Doctor account for resource demonstration
+      await User.create({
+        name: 'Dr. Sarah Connor',
+        email: 'doctor@mediroute.com',
+        password: 'doctor123',
+        role: 'doctor',
+        isEmailVerified: true
       });
       
-      console.log('✅ Accounts seeded: admin@mediroute.com (admin123) & patient@mediroute.com (patient123)');
+      console.log('✅ Accounts seeded:');
+      console.log('   - superadmin@mediroute.com (superadmin123) [super_admin]');
+      console.log('   - patient@mediroute.com (patient123) [patient]');
+      console.log('   - doctor@mediroute.com (doctor123) [doctor]');
     }
 
-    // 2. Seed Hospitals if empty
+    // Seed Hospitals if empty
     const hospitalCount = await Hospital.countDocuments();
     let hospitalIds = [];
     if (hospitalCount === 0) {
@@ -121,7 +178,7 @@ const seedDatabase = async () => {
       hospitalIds = existingHospitals.map(h => h._id);
     }
 
-    // 3. Seed Doctors if empty
+    // Seed Doctors if empty
     const doctorCount = await Doctor.countDocuments();
     if (doctorCount === 0 && hospitalIds.length > 0) {
       console.log('🌱 Seeding mock doctors...');
@@ -194,11 +251,10 @@ const seedDatabase = async () => {
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
-    const connectDB = require('./config/db');
     await connectDB();
     await seedDatabase();
   } catch (err) {
-    console.log('Running backend in standalone state...');
+    console.log('Running backend in standalone state...', err.message);
   }
   
   app.listen(PORT, () => {
@@ -207,3 +263,4 @@ const startServer = async () => {
 };
 
 startServer();
+

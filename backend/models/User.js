@@ -18,14 +18,56 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Please add a password'],
+    required: function() {
+      // Password is only required if user is not logging in via Google/GitHub OAuth
+      return !this.googleId && !this.githubId;
+    },
     minlength: 6,
     select: false
   },
   role: {
     type: String,
-    enum: ['patient', 'admin'],
+    enum: [
+      'patient', 
+      'super_admin', 
+      'hospital_admin', 
+      'doctor', 
+      'nurse', 
+      'receptionist', 
+      'pharmacist',
+      'admin' // Keep admin for fallback compatibility
+    ],
     default: 'patient'
+  },
+  phone: {
+    type: String,
+    default: null
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  isPhoneVerified: {
+    type: Boolean,
+    default: false
+  },
+  googleId: {
+    type: String,
+    default: null,
+    sparse: true
+  },
+  githubId: {
+    type: String,
+    default: null,
+    sparse: true
+  },
+  passwordResetToken: {
+    type: String,
+    default: null
+  },
+  passwordResetExpire: {
+    type: Date,
+    default: null
   },
   createdAt: {
     type: Date,
@@ -33,18 +75,21 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Encrypt password using bcrypt
+// Encrypt password using bcrypt if modified
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
-    next();
+  if (!this.password || !this.isModified('password')) {
+    return next();
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
 
 // Match user entered password to hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {
+  if (!this.password) return false;
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);
+

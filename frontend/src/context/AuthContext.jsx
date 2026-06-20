@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 
 const AuthContext = createContext();
 
@@ -13,18 +13,74 @@ export const AuthProvider = ({ children }) => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+  // Silent Refresh Helper
+  const silentRefresh = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem('token', data.token);
+        setToken(data.token);
+        return { success: true, token: data.token };
+      }
+      return { success: false };
+    } catch (err) {
+      return { success: false };
+    }
+  }, [API_URL]);
+
+  // Auth fetch wrapper (Fetch Interceptor equivalent)
+  const authFetch = useCallback(async (url, options = {}) => {
+    const activeToken = localStorage.getItem('token');
+    
+    // Inject headers and credentials
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+      ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {})
+    };
+
+    const fetchOptions = {
+      ...options,
+      headers,
+      credentials: 'include' // Send cookies
+    };
+
+    try {
+      let response = await fetch(url, fetchOptions);
+
+      // Handle token expiration (401 Unauthorized)
+      if (response.status === 401 && !url.includes('/api/auth/login') && !url.includes('/api/auth/refresh')) {
+        console.warn('⚡ Access token expired. Attempting silent token refresh...');
+        const refreshResult = await silentRefresh();
+        
+        if (refreshResult.success) {
+          // Update headers with new token
+          fetchOptions.headers['Authorization'] = `Bearer ${refreshResult.token}`;
+          // Retry original request
+          response = await fetch(url, fetchOptions);
+        } else {
+          // Logout on refresh failure
+          logout();
+        }
+      }
+
+      return response;
+    } catch (err) {
+      console.error('Fetch interceptor error:', err);
+      throw err;
+    }
+  }, [silentRefresh]);
+
   useEffect(() => {
     const loadUser = async () => {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+      // If we don't have token in localStorage, we still try /me in case cookies are set
       try {
-        const res = await fetch(`${API_URL}/api/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        const res = await authFetch(`${API_URL}/api/auth/me`);
         const data = await res.json();
         if (data.success) {
           setUser(data.user);
@@ -34,14 +90,13 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (err) {
         console.error('Error loading user session', err);
-        // Do not force logout on network disconnects
       } finally {
         setLoading(false);
       }
     };
 
     loadUser();
-  }, [token]);
+  }, [token, authFetch, API_URL]);
 
   // Signup Patient
   const signup = async (name, email, password) => {
@@ -51,7 +106,8 @@ export const AuthProvider = ({ children }) => {
       const res = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password }),
+        credentials: 'include'
       });
       const data = await res.json();
       if (data.success) {
@@ -80,7 +136,8 @@ export const AuthProvider = ({ children }) => {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
+        credentials: 'include'
       });
       const data = await res.json();
       if (data.success) {
@@ -109,7 +166,8 @@ export const AuthProvider = ({ children }) => {
       const res = await fetch(`${API_URL}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(googlePayload)
+        body: JSON.stringify(googlePayload),
+        credentials: 'include'
       });
       const data = await res.json();
       if (data.success) {
@@ -131,7 +189,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout User
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (err) {
+      // Suppress network failures on logout API call
+    }
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
@@ -148,8 +214,10 @@ export const AuthProvider = ({ children }) => {
     login,
     loginWithGoogle,
     logout,
+    authFetch,
     apiUrl: API_URL
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+

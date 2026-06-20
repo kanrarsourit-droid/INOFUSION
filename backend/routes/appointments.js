@@ -69,7 +69,7 @@ router.get('/patient', protect, async (req, res) => {
 // @route   GET /api/appointments/admin
 // @desc    Get all appointments (Admin only)
 // @access  Private/Admin
-router.get('/admin', protect, authorize('admin'), async (req, res) => {
+router.get('/admin', protect, authorize('hospital_admin', 'super_admin', 'doctor', 'receptionist'), async (req, res) => {
   try {
     const appointments = await Appointment.find()
       .populate('patient', 'name email')
@@ -86,7 +86,7 @@ router.get('/admin', protect, authorize('admin'), async (req, res) => {
 // @route   PUT /api/appointments/:id/status
 // @desc    Update appointment status (Confirm/Cancel)
 // @access  Private/Admin
-router.put('/:id/status', protect, authorize('admin'), async (req, res) => {
+router.put('/:id/status', protect, authorize('hospital_admin', 'super_admin', 'doctor', 'receptionist'), async (req, res) => {
   try {
     const { status } = req.body;
     

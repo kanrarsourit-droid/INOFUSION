@@ -48,7 +48,7 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/hospitals
 // @desc    Create a new hospital
 // @access  Private/Admin
-router.post('/', protect, authorize('admin'), async (req, res) => {
+router.post('/', protect, authorize('super_admin'), async (req, res) => {
   try {
     const hospital = await Hospital.create(req.body);
     res.status(201).json({ success: true, data: hospital });
@@ -60,7 +60,7 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
 // @route   PUT /api/hospitals/:id
 // @desc    Update hospital details / bed occupancy
 // @access  Private/Admin (or staff)
-router.put('/:id', protect, authorize('admin'), async (req, res) => {
+router.put('/:id', protect, authorize('super_admin', 'hospital_admin', 'doctor', 'nurse', 'receptionist'), async (req, res) => {
   try {
     const hospital = await Hospital.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -80,7 +80,7 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
 // @route   DELETE /api/hospitals/:id
 // @desc    Delete a hospital
 // @access  Private/Admin
-router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+router.delete('/:id', protect, authorize('super_admin'), async (req, res) => {
   try {
     const hospital = await Hospital.findByIdAndDelete(req.params.id);
 
